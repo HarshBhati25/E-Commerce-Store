@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Store</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="script.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #eeeeee; margin: 0; padding: 0; }
+        header { background: #09adf3; color: rgb(9, 9, 9); text-align: center; padding: 15px; }
+        nav ul { list-style: none; padding: 0; }
+        nav ul li { display: inline; margin: 0 15px; }
+        nav ul li a { color: #000000; text-decoration: none; font-size: 18px; font-weight: bold; }
+        .product-list { display: flex; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        .product { background: rgb(255, 255, 255); padding: 15px; margin: 10px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); text-align: center; width: 200px; }
+        .product:hover { transform: scale(1.05); transition: 0.3s; }
+        button { background: #007bff; color: rgb(255, 255, 255); border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; transition: 0.3s; }
+        #cart { background: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); margin: 20px auto; width: 60%; }
+        ul { list-style: none; padding: 0; }
+        ul li { background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        #total-price { font-size: 18px; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛍️ Sasta Bazaar 🛍️</h1>
+        <nav>
+            <ul>
+                <li><a href="#cart">🛒 Your Cart</a></li>
+                <li><a href="#products">🛍️ Shop Now</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <section id="products" class="product-list"></section>
+    
+    <section id="cart">
+        <h2>🛒 Shopping Cart</h2>
+        <ul id="cart-items"></ul>
+        <p id="total-price">Total: ₹0</p>
+        <button id="checkout">💳 Checkout</button>
+    </section>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const productsSection = document.getElementById("products");
+            const cartItems = document.getElementById("cart-items");
+            const totalPrice = document.getElementById("total-price");
+            const checkoutButton = document.getElementById("checkout");
+
+            async function fetchProducts() {
+                const response = await fetch("http://localhost:5000/products");
+                const products = await response.json();
+                products.forEach(product => {
+                    const productDiv = document.createElement("div");
+                    productDiv.classList.add("product");
+                    productDiv.innerHTML = `<h3>${product.name}</h3><p>₹${product.price}</p><button class="add-to-cart" data-id="${product.id}">🛒 Add to Cart</button>`;
+                    productsSection.appendChild(productDiv);
+                });
+            }
+            
+            productsSection.addEventListener("click", async (event) => {
+                if (event.target.classList.contains("add-to-cart")) {
+                    const productId = event.target.dataset.id;
+                    await fetch("http://localhost:5000/cart", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ productId: parseInt(productId) })
+                    });
+                    loadCart();
+                }
+            });
+
+            async function loadCart() {
+                const response = await fetch("http://localhost:5000/cart");
+                const data = await response.json();
+                cartItems.innerHTML = "";
+                data.cart.forEach(product => {
+                    const cartItem = document.createElement("li");
+                    cartItem.innerHTML = `${product.name} - ₹${product.price} x ${product.quantity} <button class="remove-item" data-id="${product.id}">❌</button>`;
+                    cartItems.appendChild(cartItem);
+                });
+                totalPrice.innerText = `Total: ₹${data.total}`;
+            }
+            
+            cartItems.addEventListener("click", async (event) => {
+                if (event.target.classList.contains("remove-item")) {
+                    const productId = event.target.dataset.id;
+                    await fetch("http://localhost:5000/cart", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ productId: parseInt(productId) })
+                    });
+                    loadCart();
+                }
+            });
+            
+            checkoutButton.addEventListener("click", async () => {
+                const response = await fetch("http://localhost:5000/checkout", { method: "POST" });
+                const data = await response.json();
+                cartItems.innerHTML = `<li>🎉 Checkout successful! Total Paid: ₹${data.total}</li>`;
+                totalPrice.innerText = "Total: ₹0";
+            });
+
+            await fetchProducts();
+            await loadCart();
+        });
+    </script>
+</body>
+</html>
